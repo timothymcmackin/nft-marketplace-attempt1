@@ -93,6 +93,14 @@ const mint = async (newTokenDefinition: TZIP21TokenMetadata) => {
   }
 };
 
+useEffect(() => {
+  (async () => {
+    if (storage && storage.token_ids.length > 0) {
+      formik.setFieldValue("token_id", storage?.token_ids.length);
+    }
+  })();
+}, [storage?.token_ids]);
+
 const validationSchema = yup.object({
   name: yup.string().required("Name is required"),
   description: yup.string().required("Description is required"),
