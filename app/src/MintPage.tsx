@@ -15,7 +15,6 @@ import { useFormik } from "formik";
 import React, { useEffect, useState } from "react";
 import * as yup from "yup";
 import { TZIP21TokenMetadata, UserContext, UserContextType } from "./App";
-import { address } from "./type-aliases";
 
 import { useSnackbar } from "notistack";
 import { BigNumber } from "bignumber.js";
