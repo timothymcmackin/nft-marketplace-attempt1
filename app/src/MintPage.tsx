@@ -34,7 +34,16 @@ import {
   KeyboardArrowRight,
 } from "@mui/icons-material";
 
-const [activeStep, setActiveStep] = React.useState(0);
+export default function MintPage() {
+  const {
+    userAddress,
+    nftContratTokenMetadataMap,
+    storage,
+    refreshUserContextOnPageReload,
+    nftContrat,
+  } = React.useContext(UserContext) as UserContextType;
+
+  const [activeStep, setActiveStep] = React.useState(0);
 
 const handleNext = () => {
   setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -169,15 +178,6 @@ const toggleDrawer =
     }
     setFormOpen(open);
   };
-
-export default function MintPage() {
-  const {
-    userAddress,
-    nftContratTokenMetadataMap,
-    storage,
-    refreshUserContextOnPageReload,
-    nftContrat,
-  } = React.useContext(UserContext) as UserContextType;
 
   const isTablet = useMediaQuery("(min-width:600px)");
 
