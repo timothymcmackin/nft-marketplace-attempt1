@@ -4,6 +4,25 @@ import Typography from "@mui/material/Typography";
 import React from "react";
 import { UserContext, UserContextType } from "./App";
 
+const validationSchema = yup.object({
+  name: yup.string().required("Name is required"),
+  description: yup.string().required("Description is required"),
+  symbol: yup.string().required("Symbol is required"),
+});
+
+const formik = useFormik({
+  initialValues: {
+    name: "",
+    description: "",
+    token_id: 0,
+    symbol: "WINE",
+  } as TZIP21TokenMetadata,
+  validationSchema: validationSchema,
+  onSubmit: (values) => {
+    mint(values);
+  },
+});
+
 export default function MintPage() {
   const {
     userAddress,
