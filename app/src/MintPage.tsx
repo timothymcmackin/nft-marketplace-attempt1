@@ -22,6 +22,29 @@ import { address, bytes, nat } from "./type-aliases";
 import { char2Bytes } from "@taquito/utils";
 import { TransactionInvalidBeaconError } from "./TransactionInvalidBeaconError";
 
+import SwipeableViews from "react-swipeable-views";
+import OpenWithIcon from "@mui/icons-material/OpenWith";
+import {
+  Box,
+  Button,
+  CardHeader,
+  CardMedia,
+  MobileStepper,
+  Stack,
+  SwipeableDrawer,
+  TextField,
+  Toolbar,
+  useMediaQuery,
+} from "@mui/material";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import {
+  AddCircleOutlined,
+  Close,
+  KeyboardArrowLeft,
+  KeyboardArrowRight,
+} from "@mui/icons-material";
+
 const { enqueueSnackbar } = useSnackbar();
 
 const mint = async (newTokenDefinition: TZIP21TokenMetadata) => {
