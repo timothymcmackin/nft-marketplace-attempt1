@@ -1,8 +1,21 @@
-import { useMediaQuery } from "@mui/material";
+import { AddCircleOutlined, Close } from "@mui/icons-material";
+import OpenWithIcon from "@mui/icons-material/OpenWith";
+import {
+  Box,
+  Button,
+  Stack,
+  SwipeableDrawer,
+  TextField,
+  Toolbar,
+  useMediaQuery,
+} from "@mui/material";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import React from "react";
-import { UserContext, UserContextType } from "./App";
+import { useFormik } from "formik";
+import React, { useEffect, useState } from "react";
+import * as yup from "yup";
+import { TZIP21TokenMetadata, UserContext, UserContextType } from "./App";
+import { address } from "./type-aliases";
 
 const validationSchema = yup.object({
   name: yup.string().required("Name is required"),
