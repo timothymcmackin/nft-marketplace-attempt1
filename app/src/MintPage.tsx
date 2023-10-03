@@ -26,6 +26,27 @@ const formik = useFormik({
 const [pictureUrl, setPictureUrl] = useState<string>("");
 const [file, setFile] = useState<File | null>(null);
 
+//open mint drawer if admin
+const [formOpen, setFormOpen] = useState<boolean>(false);
+
+useEffect(() => {
+  if (storage && storage.administrators.indexOf(userAddress! as address) < 0)
+    setFormOpen(false);
+  else setFormOpen(true);
+}, [userAddress]);
+
+const toggleDrawer =
+  (open: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
+    if (
+      event.type === "keydown" &&
+      ((event as React.KeyboardEvent).key === "Tab" ||
+        (event as React.KeyboardEvent).key === "Shift")
+    ) {
+      return;
+    }
+    setFormOpen(open);
+  };
+
 export default function MintPage() {
   const {
     userAddress,
