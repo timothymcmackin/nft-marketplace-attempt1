@@ -301,7 +301,90 @@ export default function MintPage() {
       <Typography variant="h5">Mint your wine collection</Typography>
 
       {nftContratTokenMetadataMap.size != 0 ? (
-        "//TODO"
+        <Box sx={{ width: "70vw" }}>
+        <SwipeableViews
+          axis="x"
+          index={activeStep}
+          onChangeIndex={handleStepChange}
+          enableMouseEvents
+        >
+          {Array.from(nftContratTokenMetadataMap!.entries()).map(
+            ([token_id, token]) => (
+              <Card
+                sx={{
+                  display: "block",
+                  maxWidth: "80vw",
+                  overflow: "hidden",
+                }}
+                key={token_id.toString()}
+              >
+                <CardHeader
+                  titleTypographyProps={
+                    isTablet ? { fontSize: "1.5em" } : { fontSize: "1em" }
+                  }
+                  title={token.name}
+                />
+
+                <CardMedia
+                  sx={
+                    isTablet
+                      ? {
+                          width: "auto",
+                          marginLeft: "33%",
+                          maxHeight: "50vh",
+                        }
+                      : { width: "100%", maxHeight: "40vh" }
+                  }
+                  component="img"
+                  image={token.thumbnailUri?.replace(
+                    "ipfs://",
+                    "https://gateway.pinata.cloud/ipfs/"
+                  )}
+                />
+
+                <CardContent>
+                  <Box>
+                    <Typography>{"ID : " + token_id}</Typography>
+                    <Typography>{"Symbol : " + token.symbol}</Typography>
+                    <Typography>
+                      {"Description : " + token.description}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            )
+          )}
+        </SwipeableViews>
+        <MobileStepper
+          variant="text"
+          steps={Array.from(nftContratTokenMetadataMap!.entries()).length}
+          position="static"
+          activeStep={activeStep}
+          nextButton={
+            <Button
+              size="small"
+              onClick={handleNext}
+              disabled={
+                activeStep ===
+                Array.from(nftContratTokenMetadataMap!.entries()).length - 1
+              }
+            >
+              Next
+              <KeyboardArrowRight />
+            </Button>
+          }
+          backButton={
+            <Button
+              size="small"
+              onClick={handleBack}
+              disabled={activeStep === 0}
+            >
+              <KeyboardArrowLeft />
+              Back
+            </Button>
+          }
+        />
+      </Box>
       ) : (
         <Typography sx={{ py: "2em" }} variant="h4">
           Sorry, there is not NFT yet, you need to mint bottles first
