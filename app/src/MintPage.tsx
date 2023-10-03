@@ -17,6 +17,12 @@ import * as yup from "yup";
 import { TZIP21TokenMetadata, UserContext, UserContextType } from "./App";
 import { address } from "./type-aliases";
 
+import { useSnackbar } from "notistack";
+import { BigNumber } from "bignumber.js";
+import { address, bytes, nat } from "./type-aliases";
+import { char2Bytes } from "@taquito/utils";
+import { TransactionInvalidBeaconError } from "./TransactionInvalidBeaconError";
+
 const validationSchema = yup.object({
   name: yup.string().required("Name is required"),
   description: yup.string().required("Description is required"),
