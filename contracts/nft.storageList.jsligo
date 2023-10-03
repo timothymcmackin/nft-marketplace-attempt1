@@ -3,7 +3,7 @@
 const default_storage =
     {
         administrators: Set.literal(
-            list(["tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb" as address])
+            list(["tz1QCVQinE8iVj1H2fckqx6oiM85CNJSK9Sx" as address])
         ) as set<address>,
         ledger: Big_map.empty as NFT.Ledger.t,
         metadata: Big_map.literal(
