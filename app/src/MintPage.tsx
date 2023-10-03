@@ -23,6 +23,9 @@ const formik = useFormik({
   },
 });
 
+const [pictureUrl, setPictureUrl] = useState<string>("");
+const [file, setFile] = useState<File | null>(null);
+
 export default function MintPage() {
   const {
     userAddress,
