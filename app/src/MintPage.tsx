@@ -34,6 +34,20 @@ import {
   KeyboardArrowRight,
 } from "@mui/icons-material";
 
+const [activeStep, setActiveStep] = React.useState(0);
+
+const handleNext = () => {
+  setActiveStep((prevActiveStep) => prevActiveStep + 1);
+};
+
+const handleBack = () => {
+  setActiveStep((prevActiveStep) => prevActiveStep - 1);
+};
+
+const handleStepChange = (step: number) => {
+  setActiveStep(step);
+};
+
 const { enqueueSnackbar } = useSnackbar();
 
 const mint = async (newTokenDefinition: TZIP21TokenMetadata) => {
