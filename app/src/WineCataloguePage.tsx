@@ -1,7 +1,6 @@
 import { InfoOutlined } from "@mui/icons-material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import {
-  Box,
   Button,
   Card,
   CardActions,
@@ -9,13 +8,15 @@ import {
   CardHeader,
   CardMedia,
   ImageList,
+  InputAdornment,
   Pagination,
+  TextField,
   Tooltip,
+  Typography,
   useMediaQuery,
 } from "@mui/material";
+import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
-import Typography from "@mui/material/Typography";
-
 import BigNumber from "bignumber.js";
 import { useFormik } from "formik";
 import { useSnackbar } from "notistack";
@@ -28,14 +29,19 @@ import { address, nat } from "./type-aliases";
 
 const itemPerPage: number = 6;
 
-type OfferEntry = [nat, Offer];
+type OfferEntry = [address, Offer];
 
 type Offer = {
-  owner: address;
   price: nat;
+  quantity: nat;
 };
 
-const validationSchema = yup.object({});
+const validationSchema = yup.object({
+  quantity: yup
+    .number()
+    .required("Quantity is required")
+    .positive("ERROR: The number must be greater than 0!"),
+});
 
 export default function WineCataloguePage() {
   const {
@@ -59,21 +65,20 @@ export default function WineCataloguePage() {
     validationSchema: validationSchema,
     onSubmit: (values) => {
       console.log("onSubmit: (values)", values, selectedOfferEntry);
-      buy(selectedOfferEntry!);
+      buy(values.quantity, selectedOfferEntry!);
     },
   });
   const { enqueueSnackbar } = useSnackbar();
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
 
-  const buy = async (selectedOfferEntry: OfferEntry) => {
+  const buy = async (quantity: number, selectedOfferEntry: OfferEntry) => {
     try {
       const op = await nftContrat?.methods
-        .buy(
-          BigNumber(selectedOfferEntry[0]) as nat,
-          selectedOfferEntry[1].owner
-        )
+        .buy(BigNumber(quantity) as nat, selectedOfferEntry[0])
         .send({
-          amount: selectedOfferEntry[1].price.toNumber(),
+          amount:
+            selectedOfferEntry[1].quantity.toNumber() *
+            selectedOfferEntry[1].price.toNumber(),
           mutez: true,
         });
 
@@ -81,9 +86,9 @@ export default function WineCataloguePage() {
 
       enqueueSnackbar(
         "Bought " +
-          1 +
+          quantity +
           " unit of Wine collection (token_id:" +
-          selectedOfferEntry[0] +
+          selectedOfferEntry[0][1] +
           ")",
         {
           variant: "success",
@@ -103,6 +108,7 @@ export default function WineCataloguePage() {
   };
   const isDesktop = useMediaQuery("(min-width:1100px)");
   const isTablet = useMediaQuery("(min-width:600px)");
+
   return (
     <Paper>
       <Typography style={{ paddingBottom: "10px" }} variant="h5">
@@ -115,7 +121,9 @@ export default function WineCataloguePage() {
             page={currentPageIndex}
             onChange={(_, value) => setCurrentPageIndex(value)}
             count={Math.ceil(
-              Array.from(storage?.offers.entries()).length / itemPerPage
+              Array.from(storage?.offers.entries()).filter(([_, offer]) =>
+                offer.quantity.isGreaterThan(0)
+              ).length / itemPerPage
             )}
             showFirstButton
             showLastButton
@@ -124,49 +132,40 @@ export default function WineCataloguePage() {
             cols={isDesktop ? itemPerPage / 2 : isTablet ? itemPerPage / 3 : 1}
           >
             {Array.from(storage?.offers.entries())
-
+              .filter(([_, offer]) => offer.quantity.isGreaterThan(0))
               .filter((_, index) =>
                 index >= currentPageIndex * itemPerPage - itemPerPage &&
                 index < currentPageIndex * itemPerPage
                   ? true
                   : false
               )
-              .map(([token_id, offer]) => (
-                <Card key={offer.owner + "-" + token_id.toString()}>
+              .map(([owner, offer]) => (
+                <Card key={owner}>
                   <CardHeader
                     avatar={
                       <Tooltip
                         title={
                           <Box>
-                            <Typography>
-                              {" "}
-                              {"ID : " + token_id.toString()}{" "}
-                            </Typography>
+                            <Typography>{"ID : " + 0}</Typography>
                             <Typography>
                               {"Description : " +
-                                nftContratTokenMetadataMap.get(
-                                  token_id.toNumber()
-                                )?.description}
+                                nftContratTokenMetadataMap.get(0)?.description}
                             </Typography>
-                            <Typography>
-                              {"Seller : " + offer.owner}{" "}
-                            </Typography>
+                            <Typography>{"Seller : " + owner} </Typography>
                           </Box>
                         }
                       >
                         <InfoOutlined />
                       </Tooltip>
                     }
-                    title={
-                      nftContratTokenMetadataMap.get(token_id.toNumber())?.name
-                    }
+                    title={nftContratTokenMetadataMap.get(0)?.name}
                   />
                   <CardMedia
                     sx={{ width: "auto", marginLeft: "33%" }}
                     component="img"
                     height="100px"
                     image={nftContratTokenMetadataMap
-                      .get(token_id.toNumber())
+                      .get(0)
                       ?.thumbnailUri?.replace(
                         "ipfs://",
                         "https://gateway.pinata.cloud/ipfs/"
@@ -176,8 +175,12 @@ export default function WineCataloguePage() {
                   <CardContent>
                     <Box>
                       <Typography variant="body2">
-                        {" "}
-                        {"Price : " + offer.price.dividedBy(1000000) + " XTZ"}
+                        {"Price : " +
+                          offer.price.dividedBy(1000000) +
+                          " XTZ/bottle"}
+                      </Typography>
+                      <Typography variant="body2">
+                        {"Available units : " + offer.quantity}
                       </Typography>
                     </Box>
                   </CardContent>
@@ -199,13 +202,41 @@ export default function WineCataloguePage() {
                       <form
                         style={{ width: "100%" }}
                         onSubmit={(values) => {
-                          setSelectedOfferEntry([token_id, offer]);
+                          setSelectedOfferEntry([owner, offer]);
                           formik.handleSubmit(values);
                         }}
                       >
-                        <Button type="submit" aria-label="add to favorites">
-                          <ShoppingCartIcon /> BUY
-                        </Button>
+                        <TextField
+                          type="number"
+                          sx={{ bottom: 0, position: "relative" }}
+                          fullWidth
+                          name="quantity"
+                          label="quantity"
+                          placeholder="Enter a quantity"
+                          variant="filled"
+                          value={formik.values.quantity}
+                          onChange={formik.handleChange}
+                          error={
+                            formik.touched.quantity &&
+                            Boolean(formik.errors.quantity)
+                          }
+                          helperText={
+                            formik.touched.quantity && formik.errors.quantity
+                          }
+                          InputProps={{
+                            inputProps: { min: 0, max: offer.quantity },
+                            endAdornment: (
+                              <InputAdornment position="end">
+                                <Button
+                                  type="submit"
+                                  aria-label="add to favorites"
+                                >
+                                  <ShoppingCartIcon /> BUY
+                                </Button>
+                              </InputAdornment>
+                            ),
+                          }}
+                        />
                       </form>
                     )}
                   </CardActions>

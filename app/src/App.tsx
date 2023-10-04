@@ -69,15 +69,18 @@ function App() {
         nftContractAddress
       );
       const storage = (await nftContrat.storage()) as Storage;
-      await Promise.all(
-        storage.token_ids.map(async (token_id: nat) => {
-          let tokenMetadata: TZIP21TokenMetadata = (await c
-            .tzip12()
-            .getTokenMetadata(token_id.toNumber())) as TZIP21TokenMetadata;
-          nftContratTokenMetadataMap.set(token_id.toNumber(), tokenMetadata);
-        })
-      );
-      setNftContratTokenMetadataMap(new Map(nftContratTokenMetadataMap)); //new Map to force refresh
+
+      try {
+        let tokenMetadata: TZIP21TokenMetadata = (await c
+          .tzip12()
+          .getTokenMetadata(0)) as TZIP21TokenMetadata;
+        nftContratTokenMetadataMap.set(0, tokenMetadata);
+
+        setNftContratTokenMetadataMap(new Map(nftContratTokenMetadataMap)); //new Map to force refresh
+      } catch (error) {
+        console.log("error refreshing nftContratTokenMetadataMap: ");
+      }
+
       setNftContrat(nftContrat);
       setStorage(storage);
     } catch (error) {

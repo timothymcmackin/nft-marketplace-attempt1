@@ -1,4 +1,4 @@
-#import "@ligo/fa/lib/fa2/nft/NFT.jsligo" "NFT"
+#import "@ligo/fa/lib/fa2/asset/single_asset.jsligo" "SINGLEASSET"
 
 /* ERROR MAP FOR UI DISPLAY or TESTS
     const errorMap : map<string,string> = Map.literal(list([
@@ -13,48 +13,44 @@
 */
 
 type offer = {
-  owner : address,
+  quantity : nat,
   price : nat
 };
 
 type storage =
   {
     administrators: set<address>,
-    offers: map<nat,offer>,  //user sells an offer
-    ledger: NFT.Ledger.t,
-    metadata: NFT.Metadata.t,
-    token_metadata: NFT.TokenMetadata.t,
-    operators: NFT.Operators.t,
-    token_ids : set<NFT.token_id>
+    totalSupply: nat,
+    offers: map<address,offer>,  //user sells an offer
+    ledger: SINGLEASSET.Ledger.t,
+    metadata: SINGLEASSET.Metadata.t,
+    token_metadata: SINGLEASSET.TokenMetadata.t,
+    operators: SINGLEASSET.Operators.t,
+    owners: set<SINGLEASSET.Storage.owner>
   };
 
 type ret = [list<operation>, storage];
 
 @entry
-const sell = ([token_id, price]: [nat, nat], s: storage): ret => {
+const sell = ([quantity, price]: [nat, nat], s: storage): ret => {
   //check balance of seller
 
   const sellerBalance =
-    NFT.Storage.get_balance(
+    SINGLEASSET.Storage.get_amount_for_owner(
       {
         ledger: s.ledger,
         metadata: s.metadata,
         operators: s.operators,
         token_metadata: s.token_metadata,
-        token_ids: s.token_ids
-      },
-      Tezos.get_source(),
-      token_id
-    );
-  if (sellerBalance != (1 as nat)) return failwith("2");
+        owners: s.owners
+      }
+    )(Tezos.get_source());
+  if (quantity > sellerBalance) return failwith("2");
   //need to allow the contract itself to be an operator on behalf of the seller
 
   const newOperators =
-    NFT.Operators.add_operator(
-      s.operators,
-      Tezos.get_source(),
-      Tezos.get_self_address(),
-      token_id
+    SINGLEASSET.Operators.add_operator(s.operators)(Tezos.get_source())(
+      Tezos.get_self_address()
     );
   //DECISION CHOICE: if offer already exists, we just override it
 
@@ -63,8 +59,8 @@ const sell = ([token_id, price]: [nat, nat], s: storage): ret => {
     {
       ...s,
       offers: Map.add(
-        token_id,
-        { owner: Tezos.get_source(), price: price },
+        Tezos.get_source(),
+        { quantity: quantity, price: price },
         s.offers
       ),
       operators: newOperators
@@ -73,17 +69,20 @@ const sell = ([token_id, price]: [nat, nat], s: storage): ret => {
 };
 
 @entry
-const buy = ([token_id, seller]: [nat, address], s: storage): ret => {
+const buy = ([quantity, seller]: [nat, address], s: storage): ret => {
   //search for the offer
 
   return match(
-    Map.find_opt(token_id, s.offers),
+    Map.find_opt(seller, s.offers),
     {
       None: () => failwith("3"),
       Some: (offer: offer) => {
+        //check if quantity is enough
+
+        if (quantity > offer.quantity) return failwith("4");
         //check if amount have been paid enough
 
-        if (Tezos.get_amount() < offer.price * (1 as mutez)) return failwith(
+        if (Tezos.get_amount() < (offer.price * quantity) * (1 as mutez)) return failwith(
           "5"
         );
         // prepare transfer of XTZ to seller
@@ -91,26 +90,29 @@ const buy = ([token_id, seller]: [nat, address], s: storage): ret => {
         const op =
           Tezos.transaction(
             unit,
-            offer.price * (1 as mutez),
+            (offer.price * quantity) * (1 as mutez),
             Tezos.get_contract_with_error(seller, "6")
           );
         //transfer tokens from seller to buyer
 
-        const ledger =
-          NFT.Ledger.transfer_token_from_user_to_user(
-            s.ledger,
-            token_id,
-            seller,
-            Tezos.get_source()
+        let ledger =
+          SINGLEASSET.Ledger.decrease_token_amount_for_user(s.ledger)(seller)(
+            quantity
           );
-        //remove offer
+        ledger =
+          SINGLEASSET.Ledger.increase_token_amount_for_user(ledger)(
+            Tezos.get_source()
+          )(quantity);
+        //update new offer
 
+        const newOffer = { ...offer, quantity: abs(offer.quantity - quantity) };
         return [
           list([op]) as list<operation>,
           {
             ...s,
-            offers: Map.update(token_id, None(), s.offers),
-            ledger: ledger
+            offers: Map.update(seller, Some(newOffer), s.offers),
+            ledger: ledger,
+            owners: Set.add(Tezos.get_source(), s.owners)
           }
         ]
       }
@@ -195,13 +197,13 @@ const update_operators = (p: NFT.update_operators, s: storage): ret => {
     }
   ]
 };
-
 @entry
 const mint = (
-  [token_id, name, description, symbol, ipfsUrl]
+  [quantity, name, description, symbol, ipfsUrl]
     : [nat, bytes, bytes, bytes, bytes],
   s: storage
 ): ret => {
+  if (quantity <= (0 as nat)) return failwith("0");
   if (!Set.mem(Tezos.get_sender(), s.administrators)) return failwith("1");
   const token_info: map<string, bytes> =
     Map.literal(
@@ -220,15 +222,16 @@ const mint = (
     list([]) as list<operation>,
     {
       ...s,
-      ledger: Big_map.add(token_id, Tezos.get_sender(), s.ledger) as
-        NFT.Ledger.t,
+      totalSupply: quantity,
+      ledger: Big_map.literal(list([[Tezos.get_sender(), quantity as nat]])) as
+        SINGLEASSET.Ledger.t,
       token_metadata: Big_map.add(
-        token_id,
-        { token_id: token_id, token_info: token_info },
+        0 as nat,
+        { token_id: 0 as nat, token_info: token_info },
         s.token_metadata
       ),
-      operators: Big_map.empty as NFT.Operators.t,
-      token_ids: Set.add(token_id, s.token_ids)
+      operators: Big_map.empty as SINGLEASSET.Operators.t,
+      owners: Set.add(Tezos.get_sender(), s.owners)
     }
   ]
 };

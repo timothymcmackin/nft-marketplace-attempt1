@@ -35,21 +35,23 @@ const validationSchema = yup.object({
     .number()
     .required("Price is required")
     .positive("ERROR: The number must be greater than 0!"),
+  quantity: yup
+    .number()
+    .required("Quantity is required")
+    .positive("ERROR: The number must be greater than 0!"),
 });
 
 type Offer = {
-  owner: address;
   price: nat;
+  quantity: nat;
 };
 
 export default function OffersPage() {
   const [selectedTokenId, setSelectedTokenId] = React.useState<number>(0);
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
 
-  let [offersTokenIDMap, setOffersTokenIDMap] = React.useState<Map<nat, Offer>>(
-    new Map()
-  );
-  let [ownerTokenIds, setOwnerTokenIds] = React.useState<Set<nat>>(new Set());
+  let [ownerOffers, setOwnerOffers] = React.useState<Offer | null>(null);
+  let [ownerBalance, setOwnerBalance] = React.useState<number>(0);
 
   const {
     nftContrat,
@@ -68,44 +70,45 @@ export default function OffersPage() {
   const formik = useFormik({
     initialValues: {
       price: 0,
+      quantity: 1,
     },
     validationSchema: validationSchema,
     onSubmit: (values) => {
       console.log("onSubmit: (values)", values, selectedTokenId);
-      sell(selectedTokenId, values.price);
+      sell(selectedTokenId, values.quantity, values.price);
     },
   });
 
   const initPage = async () => {
     if (storage) {
       console.log("context is not empty, init page now");
-      ownerTokenIds = new Set();
-      offersTokenIDMap = new Map();
 
       await Promise.all(
-        storage.token_ids.map(async (token_id) => {
-          let owner = await storage.ledger.get(token_id);
+        storage.owners.map(async (owner) => {
           if (owner === userAddress) {
-            ownerTokenIds.add(token_id);
-
-            const ownerOffers = await storage.offers.get(token_id);
-            if (ownerOffers) offersTokenIDMap.set(token_id, ownerOffers);
+            const ownerBalance = await storage.ledger.get(
+              userAddress as address
+            );
+            setOwnerBalance(ownerBalance.toNumber());
+            const ownerOffers = await storage.offers.get(
+              userAddress as address
+            );
+            if (ownerOffers && ownerOffers.quantity != BigNumber(0))
+              setOwnerOffers(ownerOffers!);
 
             console.log(
               "found for " +
                 owner +
                 " on token_id " +
-                token_id +
+                0 +
                 " with balance " +
-                1
+                ownerBalance
             );
           } else {
-            console.log("skip to next token id");
+            console.log("skip to next owner");
           }
         })
       );
-      setOwnerTokenIds(new Set(ownerTokenIds)); //force refresh
-      setOffersTokenIDMap(new Map(offersTokenIDMap)); //force refresh
     } else {
       console.log("context is empty, wait for parent and retry ...");
     }
@@ -125,11 +128,11 @@ export default function OffersPage() {
     })();
   }, []);
 
-  const sell = async (token_id: number, price: number) => {
+  const sell = async (token_id: number, quantity: number, price: number) => {
     try {
       const op = await nftContrat?.methods
         .sell(
-          BigNumber(token_id) as nat,
+          BigNumber(quantity) as nat,
           BigNumber(price * 1000000) as nat //to mutez
         )
         .send();
@@ -140,7 +143,7 @@ export default function OffersPage() {
         "Wine collection (token_id=" +
           token_id +
           ") offer for " +
-          1 +
+          quantity +
           " units at price of " +
           price +
           " XTZ",
@@ -161,20 +164,17 @@ export default function OffersPage() {
 
   const isDesktop = useMediaQuery("(min-width:1100px)");
   const isTablet = useMediaQuery("(min-width:600px)");
-
   return (
     <Paper>
       <Typography style={{ paddingBottom: "10px" }} variant="h5">
         Sell my bottles
       </Typography>
-      {ownerTokenIds && ownerTokenIds.size != 0 ? (
+      {ownerBalance != 0 ? (
         <Fragment>
           <Pagination
             page={currentPageIndex}
             onChange={(_, value) => setCurrentPageIndex(value)}
-            count={Math.ceil(
-              Array.from(ownerTokenIds.entries()).length / itemPerPage
-            )}
+            count={Math.ceil(1 / itemPerPage)}
             showFirstButton
             showLastButton
           />
@@ -182,124 +182,127 @@ export default function OffersPage() {
           <ImageList
             cols={isDesktop ? itemPerPage / 2 : isTablet ? itemPerPage / 3 : 1}
           >
-            {Array.from(ownerTokenIds.entries())
-              .filter((_, index) =>
-                index >= currentPageIndex * itemPerPage - itemPerPage &&
-                index < currentPageIndex * itemPerPage
-                  ? true
-                  : false
-              )
-              .map(([token_id]) => (
-                <Card key={token_id + "-" + token_id.toString()}>
-                  <CardHeader
-                    avatar={
-                      <Tooltip
-                        title={
-                          <Box>
-                            <Typography>
-                              {" "}
-                              {"ID : " + token_id.toString()}{" "}
-                            </Typography>
-                            <Typography>
-                              {"Description : " +
-                                nftContratTokenMetadataMap.get(
-                                  token_id.toNumber()
-                                )?.description}
-                            </Typography>
-                          </Box>
-                        }
-                      >
-                        <InfoOutlined />
-                      </Tooltip>
-                    }
+            <Card key={userAddress + "-" + 0}>
+              <CardHeader
+                avatar={
+                  <Tooltip
                     title={
-                      nftContratTokenMetadataMap.get(token_id.toNumber())?.name
-                    }
-                  />
-                  <CardMedia
-                    sx={{ width: "auto", marginLeft: "33%" }}
-                    component="img"
-                    height="100px"
-                    image={nftContratTokenMetadataMap
-                      .get(token_id.toNumber())
-                      ?.thumbnailUri?.replace(
-                        "ipfs://",
-                        "https://gateway.pinata.cloud/ipfs/"
-                      )}
-                  />
-
-                  <CardContent>
-                    <Box>
-                      <Typography variant="body2">
-                        {offersTokenIDMap.get(token_id)
-                          ? "Traded : " +
-                            1 +
-                            " (price : " +
-                            offersTokenIDMap
-                              .get(token_id)
-                              ?.price.dividedBy(1000000) +
-                            " Tz)"
-                          : ""}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-
-                  <CardActions>
-                    {!userAddress ? (
-                      <Box marginLeft="5vw">
-                        <ConnectButton
-                          Tezos={Tezos}
-                          nftContratTokenMetadataMap={
-                            nftContratTokenMetadataMap
-                          }
-                          setUserAddress={setUserAddress}
-                          setUserBalance={setUserBalance}
-                          wallet={wallet}
-                        />
+                      <Box>
+                        <Typography>{"ID : " + 0}</Typography>
+                        <Typography>
+                          {"Description : " +
+                            nftContratTokenMetadataMap.get(0)?.description}
+                        </Typography>
                       </Box>
-                    ) : (
-                      <form
-                        style={{ width: "100%" }}
-                        onSubmit={(values) => {
-                          setSelectedTokenId(token_id.toNumber());
-                          formik.handleSubmit(values);
+                    }
+                  >
+                    <InfoOutlined />
+                  </Tooltip>
+                }
+                title={nftContratTokenMetadataMap.get(0)?.name}
+              />
+              <CardMedia
+                sx={{ width: "auto", marginLeft: "33%" }}
+                component="img"
+                height="100px"
+                image={nftContratTokenMetadataMap
+                  .get(0)
+                  ?.thumbnailUri?.replace(
+                    "ipfs://",
+                    "https://gateway.pinata.cloud/ipfs/"
+                  )}
+              />
+
+              <CardContent>
+                <Box>
+                  <Typography variant="body2">
+                    {"Owned : " + ownerBalance}
+                  </Typography>
+                  <Typography variant="body2">
+                    {ownerOffers
+                      ? "Traded : " +
+                        ownerOffers?.quantity +
+                        " (price : " +
+                        ownerOffers?.price.dividedBy(1000000) +
+                        " Tz/b)"
+                      : ""}
+                  </Typography>
+                </Box>
+              </CardContent>
+
+              <CardActions>
+                {!userAddress ? (
+                  <Box marginLeft="5vw">
+                    <ConnectButton
+                      Tezos={Tezos}
+                      nftContratTokenMetadataMap={nftContratTokenMetadataMap}
+                      setUserAddress={setUserAddress}
+                      setUserBalance={setUserBalance}
+                      wallet={wallet}
+                    />
+                  </Box>
+                ) : (
+                  <form
+                    style={{ width: "100%" }}
+                    onSubmit={(values) => {
+                      setSelectedTokenId(0);
+                      formik.handleSubmit(values);
+                    }}
+                  >
+                    <span>
+                      <TextField
+                        type="number"
+                        sx={{ width: "40%" }}
+                        name="price"
+                        label="price/bottle"
+                        placeholder="Enter a price"
+                        variant="filled"
+                        value={formik.values.price}
+                        onChange={formik.handleChange}
+                        error={
+                          formik.touched.price && Boolean(formik.errors.price)
+                        }
+                        helperText={formik.touched.price && formik.errors.price}
+                      />
+                      <TextField
+                        sx={{
+                          width: "60%",
+                          bottom: 0,
+                          position: "relative",
                         }}
-                      >
-                        <span>
-                          <TextField
-                            type="number"
-                            name="price"
-                            label="price"
-                            placeholder="Enter a price"
-                            variant="filled"
-                            value={formik.values.price}
-                            onChange={formik.handleChange}
-                            error={
-                              formik.touched.price &&
-                              Boolean(formik.errors.price)
-                            }
-                            helperText={
-                              formik.touched.price && formik.errors.price
-                            }
-                            InputProps={{
-                              endAdornment: (
-                                <InputAdornment position="end">
-                                  <Button
-                                    type="submit"
-                                    aria-label="add to favorites"
-                                  >
-                                    <SellIcon /> Sell
-                                  </Button>
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
-                        </span>
-                      </form>
-                    )}
-                  </CardActions>
-                </Card>
-              ))}{" "}
+                        type="number"
+                        label="quantity"
+                        name="quantity"
+                        placeholder="Enter a quantity"
+                        variant="filled"
+                        value={formik.values.quantity}
+                        onChange={formik.handleChange}
+                        error={
+                          formik.touched.quantity &&
+                          Boolean(formik.errors.quantity)
+                        }
+                        helperText={
+                          formik.touched.quantity && formik.errors.quantity
+                        }
+                        InputProps={{
+                          inputProps: { min: 0, max: ownerBalance },
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Button
+                                type="submit"
+                                aria-label="add to favorites"
+                              >
+                                <SellIcon /> Sell
+                              </Button>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </span>
+                  </form>
+                )}
+              </CardActions>
+            </Card>
           </ImageList>
         </Fragment>
       ) : (
