@@ -33,5 +33,6 @@ const default_storage =
         ) as NFT.Metadata.t,
         token_metadata: Big_map.empty as NFT.TokenMetadata.t,
         operators: Big_map.empty as NFT.Operators.t,
-        token_ids: Set.empty as set<NFT.token_id>
+        token_ids: Set.empty as set<NFT.token_id>,
+        offers: Map.empty as map<nat,Contract.offer>,
     };
