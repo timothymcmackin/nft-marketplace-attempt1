@@ -121,9 +121,9 @@ const buy = ([quantity, seller]: [nat, address], s: storage): ret => {
 };
 
 @entry
-const transfer = (p: NFT.transfer, s: storage): ret => {
-  const ret2: [list<operation>, NFT.storage] =
-    NFT.transfer([
+const transfer = (p: SINGLEASSET.transfer, s: storage): ret => {
+  const ret2: [list<operation>, SINGLEASSET.storage] =
+    SINGLEASSET.transfer([
       p,
       {
         ledger: s.ledger,
@@ -147,9 +147,9 @@ const transfer = (p: NFT.transfer, s: storage): ret => {
 };
 
 @entry
-const balance_of = (p: NFT.balance_of, s: storage): ret => {
-  const ret2: [list<operation>, NFT.storage] =
-    NFT.balance_of([
+const balance_of = (p: SINGLEASSET.balance_of, s: storage): ret => {
+  const ret2: [list<operation>, SINGLEASSET.storage] =
+    SINGLEASSET.balance_of([
       p,
       {
         ledger: s.ledger,
@@ -173,9 +173,9 @@ const balance_of = (p: NFT.balance_of, s: storage): ret => {
 };
 
 @entry
-const update_operators = (p: NFT.update_operators, s: storage): ret => {
-  const ret2: [list<operation>, NFT.storage] =
-    NFT.update_ops([
+const update_operators = (p: SINGLEASSET.update_operators, s: storage): ret => {
+  const ret2: [list<operation>, SINGLEASSET.storage] =
+    SINGLEASSET.update_ops([
       p,
       {
         ledger: s.ledger,
