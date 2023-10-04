@@ -26,7 +26,7 @@ type storage =
     metadata: SINGLEASSET.Metadata.t,
     token_metadata: SINGLEASSET.TokenMetadata.t,
     operators: SINGLEASSET.Operators.t,
-    owners: set<SINGLEASSET.Storage.owner>
+    owners: set<SINGLEASSET.owner>
   };
 
 type ret = [list<operation>, storage];
