@@ -32,6 +32,123 @@ type storage =
 type ret = [list<operation>, storage];
 
 @entry
+const transfer = (p: SINGLEASSET.transfer, s: storage): ret => {
+  const ret2: [list<operation>, SINGLEASSET.storage] =
+    SINGLEASSET.transfer([
+      p,
+      {
+        ledger: s.ledger,
+        metadata: s.metadata,
+        token_metadata: s.token_metadata,
+        operators: s.operators,
+        token_ids: s.token_ids
+      }]
+    );
+  return [
+    ret2[0],
+    {
+      ...s,
+      ledger: ret2[1].ledger,
+      metadata: ret2[1].metadata,
+      token_metadata: ret2[1].token_metadata,
+      operators: ret2[1].operators,
+      token_ids: ret2[1].token_ids
+    }
+  ]
+};
+
+@entry
+const balance_of = (p: SINGLEASSET.balance_of, s: storage): ret => {
+  const ret2: [list<operation>, SINGLEASSET.storage] =
+    SINGLEASSET.balance_of([
+      p,
+      {
+        ledger: s.ledger,
+        metadata: s.metadata,
+        token_metadata: s.token_metadata,
+        operators: s.operators,
+        token_ids: s.token_ids
+      }]
+    );
+  return [
+    ret2[0],
+    {
+      ...s,
+      ledger: ret2[1].ledger,
+      metadata: ret2[1].metadata,
+      token_metadata: ret2[1].token_metadata,
+      operators: ret2[1].operators,
+      token_ids: ret2[1].token_ids
+    }
+  ]
+};
+
+@entry
+const update_operators = (p: SINGLEASSET.update_operators, s: storage): ret => {
+  const ret2: [list<operation>, SINGLEASSET.storage] =
+    SINGLEASSET.update_ops([
+      p,
+      {
+        ledger: s.ledger,
+        metadata: s.metadata,
+        token_metadata: s.token_metadata,
+        operators: s.operators,
+        token_ids: s.token_ids
+      }]
+    );
+  return [
+    ret2[0],
+    {
+      ...s,
+      ledger: ret2[1].ledger,
+      metadata: ret2[1].metadata,
+      token_metadata: ret2[1].token_metadata,
+      operators: ret2[1].operators,
+      token_ids: ret2[1].token_ids
+    }
+  ]
+};
+
+@entry
+const mint = (
+  [quantity, name, description, symbol, ipfsUrl]
+    : [nat, bytes, bytes, bytes, bytes],
+  s: storage
+): ret => {
+  if (quantity <= (0 as nat)) return failwith("0");
+  if (!Set.mem(Tezos.get_sender(), s.administrators)) return failwith("1");
+  const token_info: map<string, bytes> =
+    Map.literal(
+      list(
+        [
+          ["name", name],
+          ["description", description],
+          ["interfaces", (bytes `["TZIP-12"]`)],
+          ["thumbnailUri", ipfsUrl],
+          ["symbol", symbol],
+          ["decimals", (bytes `0`)]
+        ]
+      )
+    ) as map<string, bytes>;
+  return [
+    list([]) as list<operation>,
+    {
+      ...s,
+      totalSupply: quantity,
+      ledger: Big_map.literal(list([[Tezos.get_sender(), quantity as nat]])) as
+        SINGLEASSET.Ledger.t,
+      token_metadata: Big_map.add(
+        0 as nat,
+        { token_id: 0 as nat, token_info: token_info },
+        s.token_metadata
+      ),
+      operators: Big_map.empty as SINGLEASSET.Operators.t,
+      owners: Set.add(Tezos.get_sender(), s.owners)
+    }
+  ]
+};
+
+@entry
 const sell = ([quantity, price]: [nat, nat], s: storage): ret => {
   //check balance of seller
 
@@ -118,120 +235,4 @@ const buy = ([quantity, seller]: [nat, address], s: storage): ret => {
       }
     }
   )
-};
-
-@entry
-const transfer = (p: SINGLEASSET.transfer, s: storage): ret => {
-  const ret2: [list<operation>, SINGLEASSET.storage] =
-    SINGLEASSET.transfer([
-      p,
-      {
-        ledger: s.ledger,
-        metadata: s.metadata,
-        token_metadata: s.token_metadata,
-        operators: s.operators,
-        token_ids: s.token_ids
-      }]
-    );
-  return [
-    ret2[0],
-    {
-      ...s,
-      ledger: ret2[1].ledger,
-      metadata: ret2[1].metadata,
-      token_metadata: ret2[1].token_metadata,
-      operators: ret2[1].operators,
-      token_ids: ret2[1].token_ids
-    }
-  ]
-};
-
-@entry
-const balance_of = (p: SINGLEASSET.balance_of, s: storage): ret => {
-  const ret2: [list<operation>, SINGLEASSET.storage] =
-    SINGLEASSET.balance_of([
-      p,
-      {
-        ledger: s.ledger,
-        metadata: s.metadata,
-        token_metadata: s.token_metadata,
-        operators: s.operators,
-        token_ids: s.token_ids
-      }]
-    );
-  return [
-    ret2[0],
-    {
-      ...s,
-      ledger: ret2[1].ledger,
-      metadata: ret2[1].metadata,
-      token_metadata: ret2[1].token_metadata,
-      operators: ret2[1].operators,
-      token_ids: ret2[1].token_ids
-    }
-  ]
-};
-
-@entry
-const update_operators = (p: SINGLEASSET.update_operators, s: storage): ret => {
-  const ret2: [list<operation>, SINGLEASSET.storage] =
-    SINGLEASSET.update_ops([
-      p,
-      {
-        ledger: s.ledger,
-        metadata: s.metadata,
-        token_metadata: s.token_metadata,
-        operators: s.operators,
-        token_ids: s.token_ids
-      }]
-    );
-  return [
-    ret2[0],
-    {
-      ...s,
-      ledger: ret2[1].ledger,
-      metadata: ret2[1].metadata,
-      token_metadata: ret2[1].token_metadata,
-      operators: ret2[1].operators,
-      token_ids: ret2[1].token_ids
-    }
-  ]
-};
-@entry
-const mint = (
-  [quantity, name, description, symbol, ipfsUrl]
-    : [nat, bytes, bytes, bytes, bytes],
-  s: storage
-): ret => {
-  if (quantity <= (0 as nat)) return failwith("0");
-  if (!Set.mem(Tezos.get_sender(), s.administrators)) return failwith("1");
-  const token_info: map<string, bytes> =
-    Map.literal(
-      list(
-        [
-          ["name", name],
-          ["description", description],
-          ["interfaces", (bytes `["TZIP-12"]`)],
-          ["thumbnailUri", ipfsUrl],
-          ["symbol", symbol],
-          ["decimals", (bytes `0`)]
-        ]
-      )
-    ) as map<string, bytes>;
-  return [
-    list([]) as list<operation>,
-    {
-      ...s,
-      totalSupply: quantity,
-      ledger: Big_map.literal(list([[Tezos.get_sender(), quantity as nat]])) as
-        SINGLEASSET.Ledger.t,
-      token_metadata: Big_map.add(
-        0 as nat,
-        { token_id: 0 as nat, token_info: token_info },
-        s.token_metadata
-      ),
-      operators: Big_map.empty as SINGLEASSET.Operators.t,
-      owners: Set.add(Tezos.get_sender(), s.owners)
-    }
-  ]
 };
